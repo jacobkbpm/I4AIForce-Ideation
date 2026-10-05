@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Informatica MDM SaaS · MCP Apps by step</title>
+<style>
+  :root {
+    --bg: #f1f5f9;
+    --ink: #0f172a;
+    --navy: #0b2545;
+    --muted: #475569;
+    --line: #dbe2ea;
+    --card: #ffffff;
+    --link: #0b63c5;
+    --today-bg: #e3f4e6; --today-fg: #1f6b35;
+    --r1-bg: #e0ecfb;    --r1-fg: #1d4f91;
+    --r2-bg: #ebe7fb;    --r2-fg: #4b3aa8;
+    --r3-bg: #fbecd9;    --r3-fg: #8a4b0b;
+    --new-bg: #fde7f0;   --new-fg: #a3175a;
+    --mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .page { padding: 28px 40px 60px; max-width: 1800px; }
+  h1 { margin: 0 0 8px; font-size: 32px; color: var(--navy); letter-spacing: -0.5px; }
+  .sub { margin: 0 0 24px; color: var(--muted); font-size: 18px; }
+
+  /* Filter bar */
+  .filters { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; flex-wrap: wrap; }
+  .filters .label { color: var(--muted); margin-right: 6px; font-size: 16px; }
+  .chip {
+    border: 1px solid var(--line); background: #fff; color: var(--ink);
+    padding: 7px 16px; border-radius: 999px; font-size: 16px; font-weight: 500; cursor: pointer;
+  }
+  .chip[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .chip:focus-visible, .app-link:focus-visible, .btn:focus-visible { outline: 3px solid #60a5fa; outline-offset: 2px; }
+  .view-all { margin-left: auto; }
+
+  /* Board */
+  .board { display: grid; grid-template-columns: repeat(5, minmax(240px, 1fr)); gap: 16px; align-items: start; }
+  .col { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 18px 18px 20px; }
+  .col.trust { box-shadow: 0 0 0 2px #c7d7ee inset; }
+  .col h2 { font-family: var(--mono); font-size: 22px; margin: 0; color: var(--navy); }
+  .col .count { font-family: var(--mono); color: var(--muted); font-size: 15px; margin: 6px 0 16px; }
+  .tool {
+    border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px;
+    background: var(--card);
+  }
+  .tool.proposed { border-color: #f3b4cf; background: #fffafc; }
+  /* Mask everything except the live app so Customer 360 view stands out */
+  .tool:not(.active) { opacity: .5; filter: grayscale(.5); }
+  .app-text { color: var(--link); text-decoration: underline; font-size: 15px; }
+  .app-static { color: var(--muted); font-size: 15px; font-weight: 600; cursor: default; }
+  .usecase { font-size: 13px; margin: 6px 0 0; padding: 6px 8px; background: #fff; border-left: 3px solid var(--new-fg); border-radius: 4px; line-height: 1.4; }
+  .tool-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .tool-name { font-size: 17px; line-height: 1.4; }
+  .badges { display: flex; gap: 6px; flex-shrink: 0; }
+  .badge { font-size: 13px; font-weight: 600; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+  .b-today { background: var(--today-bg); color: var(--today-fg); }
+  .b-r1 { background: var(--r1-bg); color: var(--r1-fg); }
+  .b-r2 { background: var(--r2-bg); color: var(--r2-fg); }
+  .b-r3 { background: var(--r3-bg); color: var(--r3-fg); }
+  .b-new { background: var(--new-bg); color: var(--new-fg); }
+  .b-app { border: 1.5px solid var(--link); color: var(--link); background: #fff; }
+  .tool-desc { color: var(--muted); font-size: 13px; margin: 4px 0 0; line-height: 1.4; }
+  .app-link {
+    display: inline; margin-top: 4px; background: none; border: 0; padding: 0; text-align: left;
+    color: var(--link); text-decoration: underline; font-size: 15px; cursor: pointer; font-family: inherit;
+  }
+  .app-link.live { font-weight: 600; }
+  .app-line { margin-top: 4px; }
+  .section-tag {
+    font-family: var(--mono); font-size: 12px; color: var(--new-fg); text-transform: uppercase;
+    letter-spacing: 0.8px; margin: 16px 0 8px; display: flex; align-items: center; gap: 8px;
+  }
+  .section-tag::after { content: ""; flex: 1; height: 1px; background: #f3b4cf; }
+  .hidden { display: none !important; }
+
+  /* ===== MCP App overlay ===== */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(15, 23, 42, .55); display: none;
+    align-items: flex-start; justify-content: center; padding: 40px 24px; overflow-y: auto; z-index: 10;
+  }
+  .overlay.open { display: flex; }
+  .modal {
+    width: min(1240px, 100%); background: var(--bg); border-radius: 20px;
+    padding: 28px 32px 26px; box-shadow: 0 25px 60px rgba(0,0,0,.3);
+  }
+  .modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+  .modal-head h2 { margin: 0; font-size: 30px; color: var(--navy); letter-spacing: -0.3px; }
+  .crumb { margin: 6px 0 0; color: var(--muted); font-size: 18px; }
+  .x-btn {
+    width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--line); background: #fff;
+    font-size: 18px; cursor: pointer; flex-shrink: 0;
+  }
+  .x-btn:focus-visible { outline: 3px solid var(--link); outline-offset: 2px; }
+  .persona-row { display: flex; align-items: center; gap: 10px; margin: 16px 0; font-size: 17px; color: var(--ink); }
+  .role-pill { background: var(--navy); color: #fff; font-weight: 600; padding: 5px 14px; border-radius: 999px; font-size: 16px; }
+  .asked {
+    margin: 0 0 18px auto; width: fit-content; max-width: 70%; background: #fff; border: 1px solid var(--line);
+    border-radius: 14px; padding: 12px 18px; font-size: 17px; line-height: 1.45;
+  }
+  .asked small { display: block; color: var(--muted); font-size: 14px; margin-bottom: 2px; }
+
+  /* App frame */
+  .app-frame { border: 1px solid #bcd5f0; border-radius: 14px; background: #fff; overflow: hidden; }
+  .app-head {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 20px;
+    background: #e6f0fb; color: var(--navy); border-bottom: 1px solid #bcd5f0;
+  }
+  .app-head .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 19px; }
+  .i-badge {
+    width: 26px; height: 26px; border-radius: 6px; background: var(--link); color: #fff;
+    display: grid; place-items: center; font-size: 14px; font-weight: 700; font-family: Georgia, serif;
+  }
+  .app-head .ids { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--navy); }
+  .app-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 16px 20px;
+    grid-template-areas:
+      "what what"
+      "firmo persona"
+      "hier xref"
+      "upsell upsell";
+  }
+  .band {
+    font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: .8px;
+    color: var(--navy); display: flex; align-items: center; gap: 8px; margin-top: 6px;
+  }
+  .band::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .band small { text-transform: none; letter-spacing: 0; color: var(--muted); font-size: 12px; }
+  .band-what { grid-area: what; margin-top: 0; }
+  .panel { border: 1.5px solid #1f2937; border-radius: 2px; padding: 16px 20px; background: #fff; }
+  /* One heading size for every panel */
+  .panel h3 { margin: 0 0 6px; text-align: center; font-weight: 600; font-size: 20px; color: var(--navy); }
+  .panel .note { text-align: center; font-style: italic; color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+  .panel ul { margin: 0; padding-left: 20px; }
+  .panel li { margin: 5px 0; font-size: 14px; }
+  .p-firmo { grid-area: firmo; }
+  .p-persona { grid-area: persona; }
+  .p-hier { grid-area: hier; }
+  .p-xref { grid-area: xref; }
+  .p-upsell { grid-area: upsell; }
+  .mono-id { font-family: var(--mono); color: #1f8a3b; font-size: 13px; }
+  .rel { font-family: var(--mono); color: #1f8a3b; font-size: 13px; }
+  .health { display: inline-flex; align-items: center; gap: 8px; }
+  .meter { width: 120px; height: 8px; background: #e5e7eb; border-radius: 99px; overflow: hidden; display: inline-block; }
+  .meter i { display: block; height: 100%; width: 88%; background: #22a55a; }
+  .src { color: var(--muted); font-size: 12px; }
+  .persona-top { display: flex; gap: 16px; align-items: center; margin: 8px 0 12px; }
+  .headshot { width: 96px; height: 96px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 0 3px #fff, 0 0 0 5px #bcd5f0; }
+  .persona-top b { display: block; font-size: 16px; }
+  .engage { display: inline-block; background: var(--today-bg); color: var(--today-fg); font-weight: 600; font-size: 12px; padding: 2px 8px; border-radius: 99px; }
+
+  /* Hierarchy tree */
+  .tree, .tree ul { list-style: none; margin: 0; padding: 0; }
+  .tree ul { margin-left: 18px; border-left: 2px solid #94a3b8; padding-left: 0; }
+  .tree li { position: relative; padding: 6px 0 6px 18px; margin: 0; }
+  .tree ul > li::before {
+    content: ""; position: absolute; left: 0; top: 22px; width: 14px; border-top: 2px solid #94a3b8;
+  }
+  .node { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 14px; }
+  .node .kind { font-family: var(--mono); font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; }
+  .node.target b { background: #fff7d6; padding: 1px 4px; border-radius: 3px; }
+  .arr { font-weight: 600; font-size: 12px; padding: 2px 8px; border-radius: 99px; background: var(--r1-bg); color: var(--r1-fg); }
+  .ws { font-weight: 600; font-size: 12px; padding: 2px 8px; border-radius: 99px; background: #fef3c7; color: #8a5a00; }
+  .insight { margin-top: 12px; background: #f0f7ff; border-left: 3px solid var(--link); padding: 8px 12px; font-size: 13px; }
+
+  .xref-row { display: grid; grid-template-columns: 150px 1fr; gap: 10px; padding: 8px 0; border-top: 1px solid #eef1f4; font-size: 14px; }
+  .xref-row:first-of-type { border-top: 0; }
+  .sys { font-weight: 600; }
+  .sys small { display: block; font-family: var(--mono); font-weight: 400; color: var(--muted); font-size: 12px; }
+  .alert { color: #b45309; font-weight: 600; }
+
+  .play { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 8px; }
+  .play div { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; font-size: 14px; line-height: 1.5; }
+  .play h4 { margin: 0 0 4px; font-size: 14px; color: var(--navy); }
+
+  .app-foot {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 12px 20px; border-top: 1px solid var(--line); background: #f8fafc; font-size: 12px; color: var(--muted);
+  }
+  .foot-chips { display: flex; gap: 8px; }
+  .foot-chips span { font-size: 15px; padding: 5px 14px; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--ink); }
+  .foot-chips span:first-child { background: #e6f0fb; border-color: #e6f0fb; color: var(--navy); }
+  .outcome { margin: 18px 0 0; font-size: 17px; }
+  .outcome b { color: #1f7a3b; }
+
+  @media (max-width: 1200px) {
+    .board { grid-template-columns: repeat(2, 1fr); }
+    .app-grid { grid-template-columns: 1fr; grid-template-areas: "what" "firmo" "persona" "hier" "xref" "upsell"; }
+    .asked { max-width: 100%; }
+    .play { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<main class="page">
+  <h1>Every tool and MCP App, by step</h1>
+  <p class="sub">Informatica MDM SaaS — what's available today and what each release adds. Select App: Customer/Data 360 to see it.</p>
+
+  <div class="filters" role="toolbar" aria-label="Filter tools">
+    <span class="label">Show</span>
+    <button class="chip" data-filter="all" aria-pressed="true">All</button>
+    <button class="chip" data-filter="today" aria-pressed="false">Today</button>
+    <button class="chip" data-filter="r1" aria-pressed="false">Release 1</button>
+    <button class="chip" data-filter="r2" aria-pressed="false">Release 2</button>
+    <button class="chip" data-filter="r3" aria-pressed="false">Release 3</button>
+    <button class="chip" data-filter="new" aria-pressed="false">Proposed</button>
+    <button class="chip" data-filter="apps" aria-pressed="false">MCP Apps</button>
+    <button class="chip view-all" data-filter="apps" aria-pressed="false" id="viewAll">View all MCP Apps →</button>
+  </div>
+
+  <div class="board" id="board"></div>
+</main>
+
+<!-- Customer 360 MCP App -->
+<div class="overlay" id="c360" role="dialog" aria-modal="true" aria-labelledby="c360Title">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <h2 id="c360Title">Customer/ Data 360 View</h2>
+        <p class="crumb">Trust · Customer/Data 360 · Informatica MDM SaaS + Salesforce Data 360</p>
+      </div>
+      <button class="x-btn" id="closeC360" aria-label="Close Customer/ Data 360 View">✕</button>
+    </div>
+
+    <div class="persona-row"><span class="role-pill">Sales executive</span> Preparing for a strategic expansion meeting with a key account.</div>
+
+    <div class="asked"><small>Asked in Claude</small>I have an upcoming strategic sales meeting with Acme Corp's CDO, John Johns, to discuss a new expansion opportunity. Pull a complete 360-degree pre-meeting brief.</div>
+
+        <div class="app-frame">
+          <div class="app-head">
+            <div class="brand"><span class="i-badge" aria-hidden="true">i</span>John Johns, Chief Data Officer (CDO)</div>
+            <div class="ids">MDM-CUST-99382 · MDM-CONT-44012</div>
+          </div>
+
+          <div class="app-grid">
+            <div class="band band-what">What the record is <small>· Informatica MDM SaaS</small></div>
+
+            <section class="panel p-firmo" aria-labelledby="h-firmo">
+              <h3 id="h-firmo">The Golden Record (Core Firmographics)</h3>
+              <p class="note">This data is survived and consolidated from Salesforce, SAP ERP, and Dun &amp; Bradstreet.</p>
+              <ul>
+                <li><b>Enterprise Name:</b> Acme Corporation (Subsidiary of Acme Global Holdings)</li>
+                <li><b>Industry:</b> Financial Technology (FinTech)</li>
+                <li><b>Golden Record ID:</b> <span class="mono-id">MDM-CUST-99382</span></li>
+                <li><b>HQ Address:</b> 1200 Innovation Way, San Francisco, CA <span class="src">(Validated via Address Doctor)</span></li>
+                <li><b>Total Annual Revenue:</b> $1.2B</li>
+                <li><b>Account Status:</b> Active / Strategic Key Account</li>
+                <li><b>Overall Health Score:</b> <span class="health"><span class="meter" aria-hidden="true"><i></i></span> 🟢 88/100</span></li>
+              </ul>
+            </section>
+
+            <section class="panel p-persona" aria-labelledby="h-persona">
+              <h3 id="h-persona">Key Persona</h3>
+              <div class="persona-top">
+                <svg class="headshot" viewBox="0 0 120 120" role="img" aria-label="Headshot of John Johns">
+                  <defs>
+                    <linearGradient id="hsBg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dbe7f5"/><stop offset="1" stop-color="#a9c1de"/></linearGradient>
+                    <clipPath id="hsClip"><circle cx="60" cy="60" r="60"/></clipPath>
+                  </defs>
+                  <g clip-path="url(#hsClip)">
+                    <rect width="120" height="120" fill="url(#hsBg)"/>
+                    <path d="M14 120c2-24 18-34 46-36 28 2 44 12 46 36z" fill="#1e293b"/>
+                    <path d="M48 84l12 22 12-22z" fill="#fff"/>
+                    <path d="M57 88h6l2 6-5 20-5-20z" fill="#0b63c5"/>
+                    <path d="M40 86l20 22-10-26zM80 86l-20 22 10-26z" fill="#334155"/>
+                    <rect x="52" y="68" width="16" height="18" rx="6" fill="#d9a77f"/>
+                    <ellipse cx="60" cy="52" rx="20" ry="24" fill="#e8b994"/>
+                    <path d="M39 50c-1-18 9-28 22-28s22 8 21 26c-3-8-8-12-14-13-8 4-19 5-29 15z" fill="#4b3621"/>
+                    <circle cx="52" cy="54" r="2" fill="#2b2b2b"/><circle cx="68" cy="54" r="2" fill="#2b2b2b"/>
+                    <path d="M53 65q7 5 14 0" stroke="#9a5b3c" stroke-width="2" fill="none" stroke-linecap="round"/>
+                  </g>
+                </svg>
+                <div><b>John Johns, Chief Data Officer (CDO)</b>
+                  <span class="src">Golden Contact ID: <span class="mono-id">MDM-CONT-44012</span></span></div>
+              </div>
+              <p class="note" style="text-align:left;margin-bottom:6px">The MDM graph links John to multiple entities, revealing his true span of influence.</p>
+              <ul>
+                <li><b>Direct Relationships:</b>
+                  <ul>
+                    <li><span class="rel">Employed_By</span> ➔ Acme Corporation (Primary)</li>
+                    <li><span class="rel">Board_Member_Of</span> ➔ Acme Analytics (Acquired Subsidiary)</li>
+                    <li><span class="rel">Decision_Maker_For</span> ➔ Enterprise Cloud Migration Project</li>
+                  </ul>
+                </li>
+                <li><b>Contact Lineage:</b>
+                  <ul>
+                    <li><i>Email updated 14 days ago (Source: Marketo).</i></li>
+                    <li><i>Title promoted to CDO 6 months ago (Source: LinkedIn Sales Navigator via D&amp;B Enrichment).</i></li>
+                  </ul>
+                </li>
+                <li><b>Engagement Profile:</b> <span class="engage">High</span> Logged 4 interactions in the last 30 days (2 webinars, 1 technical support escalation, 1 executive briefing).</li>
+              </ul>
+            </section>
+
+            <section class="panel p-hier" aria-labelledby="h-hier">
+              <h3 id="h-hier">Corporate Hierarchy &amp; Relationship Graph</h3>
+              <p class="note">MDM SaaS native graph visualization translates complex B2B structures into white-space opportunities.</p>
+              <ul class="tree">
+                <li><span class="node"><span class="kind">Global Ultimate Parent</span> <b>Acme Global Holdings</b></span>
+                  <ul>
+                    <li><span class="node target"><span class="kind">Target Account</span> <b>Acme Corporation</b> (John Johns, CDO) <span class="arr">Current ARR: $250k</span></span>
+                      <ul>
+                        <li><span class="node"><span class="kind">Subsidiary</span> <b>Acme Analytics</b> (London) <span class="ws">💡 Whitespace: No Active Contracts</span></span></li>
+                        <li><span class="node"><span class="kind">Subsidiary</span> <b>Acme Pay</b> (New York) <span class="ws">💡 Whitespace: Evaluating Competitor</span></span></li>
+                      </ul>
+                    </li>
+                    <li><span class="node"><span class="kind">Sister Company</span> <b>Acme Retail Solutions</b> <span class="arr">Current ARR: $50k</span> <span class="src">(Separate Buying Center)</span></span></li>
+                  </ul>
+                </li>
+              </ul>
+              <div class="insight"><b>Upsell Insight:</b> John sits on the board of Acme Analytics. While you are selling to Acme Corporation, John has the authority to consolidate data contracts across the subsidiaries.</div>
+            </section>
+
+            <section class="panel p-xref" aria-labelledby="h-xref">
+              <h3 id="h-xref">Data Lineage &amp; Cross-Reference (XREF) View</h3>
+              <p class="note">Where is this intelligence coming from? The MCP agent cross-references your internal systems to give you the true operational picture.</p>
+              <div class="xref-row"><div class="sys">Salesforce<small>SFDC-001</small></div><div>Shows an active opportunity for "Cloud Infrastructure Upgrade." (Stage 3).</div></div>
+              <div class="xref-row"><div class="sys">SAP ERP<small>SAP-CUST-883</small></div><div>Shows flawless payment history; however, billing is fragmented across 3 different regional cost centers.</div></div>
+              <div class="xref-row"><div class="sys">ServiceNow<small>TKT-9912</small></div><div><span class="alert">⚠️ Alert:</span> A Sev-2 support ticket was closed last week regarding "Data latency in the EU region." (Highly relevant for John as CDO).</div></div>
+            </section>
+
+            <section class="panel p-upsell" aria-labelledby="h-upsell">
+              <h3 id="h-upsell">AI-Derived Upsell Strategy (Contextualized for a CDO)</h3>
+              <p style="font-size:14px;margin:0">Based on the MDM metadata, relationship graph, and cross-system transactions, here is your playbook for John Johns:</p>
+              <div class="play">
+                <div><h4>The Hook</h4>Salesforce Service Cloud shows 3 escalated cases in 60 days across Acme Corp, Acme Analytics and Acme Pay. Each was logged against a different duplicate account, so agents never saw the full customer history. John's pain point is one trusted customer view for service.</div>
+                <div><h4>The Pitch</h4>Propose an enterprise-wide agreement that feeds MDM golden records into Service Cloud through Data 360. Every agent and Agentforce service agent then sees one unified Acme profile, with the related cases, contracts and entitlements, which cuts handle time and repeat escalations.</div>
+                <div><h4>The Leverage</h4>Point to the falling CSAT on the Acme Analytics cases in Service Cloud and to his board seat there. Together they give him a reason to bundle the subsidiary's service operations into the master Acme Corp contract.</div>
+              </div>
+            </section>
+          </div>
+
+          <div class="app-foot">
+            <div class="foot-chips"><span>Explainable</span><span>Human in the loop</span></div>
+            <span>Sources: Informatica MDM SaaS · Salesforce Data 360 · SAP ERP · D&amp;B · Marketo · ServiceNow · Golden record last mastered: today</span>
+          </div>
+        </div>
+
+    <p class="outcome"><b>Outcome:</b> An executive pre-meeting brief in seconds, showing what the record is and how it's used, with a ready-made upsell playbook.</p>
+  </div>
+</div>
+
+
+<script>
+  // rel: today | r1 | r2 | r3 | new ; app: [label, release] ; live: opens a prototype UI
+  const PILLARS = [
+    { key: "connect", tools: [
+      { name: "Connection management", rel: "today", app: ["Connection health", "R2"] },
+      { name: "Secure agent management", rel: "today" },
+      { name: "Runtime setup", rel: "r3", app: ["Runtime status", "R3"] },
+    ]},
+    { key: "understand", tools: [
+      { name: "Catalog discovery", rel: "today", app: ["Catalog search", "R2"] },
+      { name: "Catalog metadata search", rel: "today", app: ["Asset profile", "R2"] },
+      { name: "Catalog enrichment", rel: "today", app: ["Enrichment review", "R3"] },
+      { name: "Catalog asset history", rel: "today" },
+      { name: "Lineage", rel: "r1", app: ["Lineage graph", "R2"] },
+      { name: "Business entity service", rel: "r3" },
+    ]},
+    { key: "transform", tools: [
+      { name: "Job management", rel: "today", app: ["Job monitor", "R2"] },
+      { name: "Troubleshooting", rel: "today", app: ["Root cause, fix and rerun", "R2"] },
+      { name: "Log management", rel: "today" },
+      { name: "Asset promotion", rel: "today", app: ["Dev-to-prod review", "R3"] },
+      { name: "Mapping authoring", rel: "r2", app: ["Mapping review", "R3"] },
+      { name: "Taskflow management", rel: "r2" },
+    ]},
+    { key: "deliver", tools: [
+      { name: "Ingestion and replication into lakehouses", rel: "r2", app: ["Ingestion review", "R2"] },
+      { name: "Unstructured data into vectors", rel: "r3", app: ["Vector preview", "R3"] },
+      { name: "Data product authoring", rel: "r3", app: ["Data product builder", "R3"] },
+      { name: "Contract and SLA authoring", rel: "r3" },
+      { name: "Data provisioning", rel: "today", app: ["Access request", "R2"] },
+    ]},
+    { key: "trust", tools: [
+      { name: "Data quality score", rel: "today", app: ["DQ scorecard", "R1"] },
+      { name: "DQ authoring", rel: "r2", app: ["Rule builder", "R2"] },
+      { name: "Scorecard authoring", rel: "r2" },
+      { name: "Customer identification", rel: "today", app: ["Match and merge", "R2"] },
+      { name: "Address verification", rel: "today" },
+      { name: "Stewardship management", rel: "r2", app: ["Stewardship inbox", "R2"] },
+      { name: "Job management", rel: "r2" },
+      { name: "Customer/Data 360 view", rel: "new", app: ["Customer/Data 360", "Proposed"], live: "c360",
+        desc: "Orchestrates Informatica MDM SaaS and Salesforce Data 360 to deliver an executive briefing in seconds: what the record is, and how it's used." },
+      { name: "Data modelling", rel: "new", app: ["Data Modelling", "Coming soon"], active: true,
+        desc: "Build an MDM model from a source catalog and automatically ingest data from different sources into master data.",
+        usecase: "Model an MDM using a source catalog, auto-ingest data from different sources, and produce master data." },
+      { name: "Data insights", rel: "new", app: ["Data Insights", "Coming soon"], active: true,
+        desc: "Analytics and dashboards built on trusted, mastered data.",
+        usecase: "Analytics and dashboards for mastered data." },
+      { name: "Data remediation", rel: "new", app: ["Data Remediation", "Coming soon"], active: true,
+        desc: "Find and fix erroneous master data in bulk, rather than one record at a time.",
+        usecase: "Bulk remediate erroneous data." },
+    ]},
+  ];
+
+  const BADGE = { today: ["Today", "b-today"], r1: ["R1", "b-r1"], r2: ["R2", "b-r2"], r3: ["R3", "b-r3"], new: ["Proposed", "b-new"] };
+  const board = document.getElementById("board");
+  let appCount = 0;
+
+  function toolHTML(t) {
+    const [label, cls] = BADGE[t.rel];
+    const appTags = t.app ? `<span class="badge b-app">App</span>` : "";
+    const desc = t.desc ? `<p class="tool-desc">${t.desc}</p>` : "";
+    const usecase = t.usecase ? `<p class="usecase"><b>Use case:</b> ${t.usecase}</p>` : "";
+    // Only live apps are clickable; active-but-not-live apps show plain text
+    const link = !t.app ? ""
+      : t.live
+        ? `<div class="app-line"><button class="app-link live" data-live="${t.live}">App: ${t.app[0]}</button></div>`
+        : t.active
+          ? `<div class="app-line"><span class="app-static">App: ${t.app[0]} · ${t.app[1]}</span></div>`
+          : `<div class="app-line"><span class="app-text">App: ${t.app[0]} · ${t.app[1]}</span></div>`;
+    return `<div class="tool ${t.rel === "new" ? "proposed" : ""} ${t.live || t.active ? "active" : ""}" data-rel="${t.rel}" data-app="${t.app ? 1 : 0}">
+      <div class="tool-head"><span class="tool-name">${t.name}</span>
+        <span class="badges">${t.rel === "new" ? "" : `<span class="badge ${cls}">${label}</span>`}${appTags}</span></div>
+      ${desc}${usecase}${link}</div>`;
+  }
+
+  PILLARS.forEach(p => {
+    appCount += p.tools.filter(t => t.app).length;
+    const existing = p.tools.filter(t => t.rel !== "new").map(toolHTML).join("");
+    const proposed = p.tools.filter(t => t.rel === "new");
+    const proposedHTML = proposed.length
+      ? `<div class="section-tag proposed-tag">MDM SaaS · proposed</div>` + proposed.map(toolHTML).join("")
+      : "";
+    board.insertAdjacentHTML("beforeend",
+      `<section class="col ${p.key}" aria-labelledby="col-${p.key}">
+        <h2 id="col-${p.key}">${p.key}</h2>
+        <div class="count">${p.tools.length} tools</div>
+        ${existing}${proposedHTML}
+      </section>`);
+  });
+  document.getElementById("viewAll").textContent = `View all ${appCount} MCP Apps →`;
+
+  // Filters
+  const chips = document.querySelectorAll(".chip");
+  chips.forEach(c => c.addEventListener("click", () => {
+    const f = c.dataset.filter;
+    chips.forEach(x => x.setAttribute("aria-pressed", String(x === c)));
+    document.querySelectorAll(".tool").forEach(el => {
+      const show = f === "all" || (f === "apps" ? el.dataset.app === "1" : el.dataset.rel === f);
+      el.classList.toggle("hidden", !show);
+    });
+    document.querySelectorAll(".proposed-tag").forEach(el =>
+      el.classList.toggle("hidden", !(f === "all" || f === "new" || f === "apps")));
+  }));
+
+  // App links
+  let lastFocus;
+  const overlay = document.getElementById("c360");
+  const closeBtn = document.getElementById("closeC360");
+
+  function openApp(id, trigger) {
+    lastFocus = trigger;
+    document.getElementById(id).classList.add("open");
+    document.body.style.overflow = "hidden";
+    closeBtn.focus();
+  }
+  function closeApp() {
+    overlay.classList.remove("open");
+    document.body.style.overflow = "";
+    lastFocus && lastFocus.focus();
+  }
+
+  board.addEventListener("click", e => {
+    const btn = e.target.closest(".app-link");
+    if (btn) openApp(btn.dataset.live, btn);
+  });
+  closeBtn.addEventListener("click", closeApp);
+  overlay.addEventListener("click", e => { if (e.target === overlay) closeApp(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && overlay.classList.contains("open")) closeApp(); });
+</script>
+</body>
+</html>
